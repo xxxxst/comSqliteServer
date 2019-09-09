@@ -172,3 +172,6 @@ node_modules
 package-lock.json
 dist/
 /pkg/
+
+/datatest/
+/run*.bat
