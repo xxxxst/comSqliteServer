@@ -4,12 +4,15 @@ import (
     "fmt"
     // "io"
     "net/http"
+    "path"
 	"encoding/json"
+	"time"
 	
 	"github.com/gorilla/mux"
 	
 	. "server"
 	. "model"
+	util "util"
 )
 
 type MainRouter struct{
@@ -32,9 +35,10 @@ func (c *MainRouter) Init(comMd *ComModel){
 	c.Router.HandleFunc("/server/query", c.queryPostHandler).Methods("POST");
 	c.Router.HandleFunc("/server/exec", c.execPostHandler).Methods("POST");
 	c.Router.HandleFunc("/server/insert", c.insertPostHandler).Methods("POST");
+	c.Router.HandleFunc("/server/file/upload", c.uploadFileHandler).Methods("POST");
 	
 	//static
-	c.Router.HandleFunc("/{path:.*}", c.getStaticFileHandler);
+	// c.Router.HandleFunc("/{path:.*}", c.getStaticFileHandler);
 
 	c.Router.Use(setOriginMiddleware);
 
@@ -42,9 +46,9 @@ func (c *MainRouter) Init(comMd *ComModel){
 }
 
 // 静态文件
-func (c *MainRouter) getStaticFileHandler(w http.ResponseWriter, r *http.Request){
-	getStaticFileHandler(w, r, c.ComMd.WebPath);
-}
+// func (c *MainRouter) getStaticFileHandler(w http.ResponseWriter, r *http.Request){
+// 	getStaticFileHandler(w, r, c.ComMd.WebPath);
+// }
 
 //direct query Handler
 func (c *MainRouter) directQueryHandler(w http.ResponseWriter, r *http.Request){
@@ -182,6 +186,43 @@ func (c *MainRouter) insertPostHandler(w http.ResponseWriter, r *http.Request){
 	if(err != nil) {
 		rst.ErrInfo = err.Error();
 	}
+	jsonData, _ := json.Marshal(rst);
+	writeGzipByte(w, r, jsonData);
+}
+
+//upload file
+func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
+
+	param := UploadFileMd{};
+	decoder := json.NewDecoder(r.Body);
+	err := decoder.Decode(&param);
+	if err != nil {
+		c.comErr(w, r, "参数错误");
+		return;
+	}
+	
+	_, handler, err := r.FormFile("uploadfile");
+
+	fileName := handler.Filename;
+	if(param.Rename == 1) {
+		//获取文件后缀
+		ext := path.Ext(handler.Filename);
+		fileName = util.FormatTime(time.Now(), "yyyy-MM-dd hh:mm:ss fff") + ext;
+	}
+
+	fmt.Println(fileName);
+
+	// f, err := os.OpenFile(c.ComMd.DataPath + fileNewName, os.O_WRONLY | os.O_CREATE, 0666);
+    // if err != nil {
+    //     fmt.Println(err);
+    //     return;
+    // }
+    // defer f.Close();
+
+	// id, err := GetDbServer().Insert(param.Sql, param.Params);
+	rst := NewComRst();
+	rst.Success = true;
+	// rst.Data = nil;
 	jsonData, _ := json.Marshal(rst);
 	writeGzipByte(w, r, jsonData);
 }

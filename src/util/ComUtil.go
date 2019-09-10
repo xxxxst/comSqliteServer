@@ -3,6 +3,9 @@ package util
 import (
 	"io/ioutil"
 	"regexp"
+	"time"
+	"strings"
+	"strconv"
 )
 
 // 比较两个[]byte是否相同
@@ -174,4 +177,23 @@ func FormatPath(path string) string {
 	reg, _ := regexp.Compile("[\\/\\\\]+");
 	path = reg.ReplaceAllString(path, "/");
 	return path;
+}
+
+func FormatTime(t time.Time, str string) string {
+	str = strings.Replace(str, "yyyy", "2016", -1);
+	str = strings.Replace(str, "MM", "01", -1);
+	str = strings.Replace(str, "dd", "02", -1);
+	str = strings.Replace(str, "hh", "15", -1);
+	str = strings.Replace(str, "mm", "04", -1);
+	str = strings.Replace(str, "ss", "05", -1);
+
+	ms := int(t.UnixNano() / 1e6);
+	if(ms >= 1000) {
+		ms = 999;
+	}
+	strMS := strconv.Itoa(ms);
+	rst := t.Format(str);
+	strings.Replace(rst, "fff", strMS, -1);
+
+	return rst;
 }

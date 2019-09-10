@@ -25,3 +25,7 @@ type QueryPostMd struct {
 	Sql			string			`json:"sql"`;
 	Params		[]interface{}	`json:"params"`;
 }
+
+type UploadFileMd struct {
+	Rename		int	`json:"rename"`;
+}

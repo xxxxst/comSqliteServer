@@ -63,6 +63,7 @@ func (c *ComSqliteServer) Run() {
 	c.comMd.ConfigPath = getStringNotEmpty(configPath, exeDir + "/serverConfig") + "/";
 
 	c.comMd.DbPath = c.comMd.ConfigPath + "data.db";
+	c.comMd.DataPath = c.comMd.ConfigPath + "data/";
 	c.comMd.WebConfigPath = c.comMd.ConfigPath + "config.xml";
 
 	//load config

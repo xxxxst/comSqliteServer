@@ -1,14 +1,13 @@
 package model
 
 type ComModel struct {
-	// ServerId		string;
 	Version			string;
 	
 	ExePath			string;
-	WebPath			string;
-	DbPath			string;
 	ConfigPath		string;
-	// DataPath		string;
+
+	DbPath			string;
+	DataPath		string;
 	WebConfigPath	string;
 
 	Ip				string;
