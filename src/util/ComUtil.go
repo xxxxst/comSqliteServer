@@ -180,20 +180,30 @@ func FormatPath(path string) string {
 }
 
 func FormatTime(t time.Time, str string) string {
-	str = strings.Replace(str, "yyyy", "2016", -1);
+	str = strings.Replace(str, "yyyy", "2006", -1);
 	str = strings.Replace(str, "MM", "01", -1);
 	str = strings.Replace(str, "dd", "02", -1);
-	str = strings.Replace(str, "hh", "15", -1);
+	str = strings.Replace(str, "HH", "15", -1);
+	str = strings.Replace(str, "hh", "03", -1);
 	str = strings.Replace(str, "mm", "04", -1);
 	str = strings.Replace(str, "ss", "05", -1);
 
-	ms := int(t.UnixNano() / 1e6);
+	str = strings.Replace(str, "M", "1", -1);
+	str = strings.Replace(str, "d", "2", -1);
+	str = strings.Replace(str, "h", "3", -1);
+	str = strings.Replace(str, "m", "4", -1);
+	str = strings.Replace(str, "s", "5", -1);
+
+	val := t.UnixNano();
+	ms := int((val - (val / int64(time.Second)) * int64(time.Second)) / int64(time.Millisecond));
 	if(ms >= 1000) {
 		ms = 999;
 	}
-	strMS := strconv.Itoa(ms);
+	strMS := "000" + strconv.Itoa(ms);
+	strMS = strMS[len(strMS) - 3:];
+
 	rst := t.Format(str);
-	strings.Replace(rst, "fff", strMS, -1);
+	rst = strings.Replace(rst, "fff", strMS, -1);
 
 	return rst;
 }

@@ -2,11 +2,14 @@ package router
 
 import (
     "fmt"
-    // "io"
+    "io"
     "net/http"
     "path"
 	"encoding/json"
 	"time"
+	"strconv"
+	"regexp"
+	// "strings"
 	
 	"github.com/gorilla/mux"
 	
@@ -193,24 +196,66 @@ func (c *MainRouter) insertPostHandler(w http.ResponseWriter, r *http.Request){
 //upload file
 func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
 
-	param := UploadFileMd{};
-	decoder := json.NewDecoder(r.Body);
-	err := decoder.Decode(&param);
+	// param := UploadFileMd{};
+	// decoder := json.NewDecoder(r.Body);
+	// err := decoder.Decode(&param);
+	// if err != nil {
+	// 	c.comErr(w, r, "参数错误");
+	// 	return;
+	// }
+	
+	name := r.FormValue("name");
+
+	// strRename := r.FormValue("rename");
+	rename,err := strconv.Atoi(r.FormValue("rename"));
 	if err != nil {
 		c.comErr(w, r, "参数错误");
 		return;
 	}
 	
-	_, handler, err := r.FormFile("uploadfile");
-
-	fileName := handler.Filename;
-	if(param.Rename == 1) {
-		//获取文件后缀
-		ext := path.Ext(handler.Filename);
-		fileName = util.FormatTime(time.Now(), "yyyy-MM-dd hh:mm:ss fff") + ext;
+	file, handler, err := r.FormFile("file");
+	if err != nil {
+		c.comErr(w, r, "参数错误");
+		return;
 	}
 
+	if name == "" {
+		name = handler.Filename;
+	}
+
+	fileName := name;
+	if(rename == 1) {
+		//获取文件后缀
+		ext := path.Ext(handler.Filename);
+		// fileName = util.FormatTime(time.Now(), "yyyy/MM/dd HH:mm:ss fff") + ext;
+		fileName = util.FormatTime(time.Now(), "yyyyMMddHHmmssfff") + ext;
+	}
+
+	reg1, _ := regexp.Compile("[ ]*[\\/\\\\]+[ ]*");
+	fileName = reg1.ReplaceAllString(fileName, "/");
+
+	reg2, _ := regexp.Compile("[^\\/]*[^\\.\\/][\\/]\\.\\.[\\/]");
+	// fileName = reg.ReplaceAllString(fileName, "");
+	// fileName = strings.Replace(fileName, "..", "", -1);
+	for ;; {
+		if(!reg2.MatchString(fileName)) {
+			break;
+		}
+		// fmt.Println("11:" + fileName);
+		fileName = reg2.ReplaceAllString(fileName, "");
+		// fmt.Println("12:" + fileName);
+	}
+
+	// fmt.Println("abc:" + fileName);
+	reg3, _ := regexp.Compile("([:*?<>|])|([^\\/]\\.\\/)");
+	if(reg3.MatchString(fileName)) {
+		c.comErr(w, r, "参数错误");
+		return;
+	}
+	// fileName = strings.Replace(fileName, "..", "", -1);
+
 	fmt.Println(fileName);
+	io.Copy(w, file);
 
 	// f, err := os.OpenFile(c.ComMd.DataPath + fileNewName, os.O_WRONLY | os.O_CREATE, 0666);
     // if err != nil {
@@ -220,11 +265,11 @@ func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
     // defer f.Close();
 
 	// id, err := GetDbServer().Insert(param.Sql, param.Params);
-	rst := NewComRst();
-	rst.Success = true;
-	// rst.Data = nil;
-	jsonData, _ := json.Marshal(rst);
-	writeGzipByte(w, r, jsonData);
+	// rst := NewComRst();
+	// rst.Success = true;
+	// // rst.Data = nil;
+	// jsonData, _ := json.Marshal(rst);
+	// writeGzipByte(w, r, jsonData);
 }
 
 // 返回错误信息
