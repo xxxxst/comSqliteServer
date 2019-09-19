@@ -15,7 +15,7 @@ import (
     "path/filepath"
 
 	// . "dao"
-	. "server"
+	// . "server"
 	. "router"
 	. "control"
 	. "model"
@@ -65,6 +65,7 @@ func (c *ComSqliteServer) Run() {
 	c.comMd.DbPath = c.comMd.ConfigPath + "data.db";
 	c.comMd.DataPath = c.comMd.ConfigPath + "data/";
 	c.comMd.WebConfigPath = c.comMd.ConfigPath + "config.xml";
+	c.comMd.WebPath = c.comMd.ExePath + "web/";
 
 	//load config
 	c.cfgCtl = ConfigCtl{};
@@ -74,8 +75,8 @@ func (c *ComSqliteServer) Run() {
 	c.comMd.Port = strconv.Itoa(c.cfgCtl.Md.Port);
 
 	//init database
-	dbServer := GetDbServer();
-	dbServer.Init(c.comMd.DbPath);
+	// dbServer := GetDbServer();
+	// dbServer.Init(c.comMd.DbPath);
 	
 	//init router
 	c.router = MainRouter{};

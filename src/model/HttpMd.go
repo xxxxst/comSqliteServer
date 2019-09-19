@@ -29,3 +29,13 @@ type QueryPostMd struct {
 type UploadFileMd struct {
 	Rename		int	`json:"rename"`;
 }
+
+type FileMd struct {
+	Path		string			`json:"path"`;
+}
+
+type FileInfo struct {
+	Name		string			`json:"name"`;
+	IsDir		bool			`json:"isDir"`;
+	Children	[]FileInfo		`json:"children"`;
+}

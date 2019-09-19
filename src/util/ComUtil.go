@@ -3,6 +3,7 @@ package util
 import (
 	"io/ioutil"
 	"regexp"
+	"os"
 	"time"
 	"strings"
 	"strconv"
@@ -206,4 +207,22 @@ func FormatTime(t time.Time, str string) string {
 	rst = strings.Replace(rst, "fff", strMS, -1);
 
 	return rst;
+}
+
+func FileExists(path string) bool {
+	st, err := os.Stat(path);
+	if err != nil {
+		return false
+	}
+
+	return !st.IsDir();
+}
+
+func DirectoryExists(path string) bool {
+	st, err := os.Stat(path);
+	if err != nil {
+		return false
+	}
+
+	return st.IsDir();
 }

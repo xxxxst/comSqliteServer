@@ -7,6 +7,7 @@ type ComModel struct {
 	ConfigPath		string;
 
 	DbPath			string;
+	WebPath			string;
 	DataPath		string;
 	WebConfigPath	string;
 

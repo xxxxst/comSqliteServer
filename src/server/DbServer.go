@@ -14,18 +14,26 @@ import (
 	// . "model"
 )
 
-type DbServer struct{
+type DbServer struct {
 	db *sqlx.DB;
 }
 
-var GetDbServer = (func() (func() (*DbServer)) {
-	var instance *DbServer;
+var GetDbServer = (func() (func(proj string, path string) (*DbServer)) {
+	// var instance *DbServer;
+	mapServer := make(map[string] *DbServer);
 
-	return func() (*DbServer) {
-		if(instance == nil) {
-			instance = new(DbServer);
+	return func(proj string, path string) (*DbServer) {
+		_, ok := mapServer[proj];
+		if !ok {
+			md := new(DbServer);
+			md.Init(path);
+			mapServer[proj] = md;
 		}
-		return instance;
+		
+		// if(instance == nil) {
+		// 	instance = new(DbServer);
+		// }
+		return mapServer[proj];
 	};
 })();
 

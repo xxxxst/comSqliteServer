@@ -173,5 +173,5 @@ package-lock.json
 dist/
 /pkg/
 
-/datatest/
-/run*.bat
+/datatest/*
+!/datatest/test/
