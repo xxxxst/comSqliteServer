@@ -7,6 +7,9 @@ import (
 	"time"
 	"strings"
 	"strconv"
+	"bytes"
+	"golang.org/x/text/encoding/simplifiedchinese"
+    "golang.org/x/text/transform"
 )
 
 // 比较两个[]byte是否相同
@@ -172,6 +175,17 @@ func SearchRune(text []rune, what string) int {
         }
     }
     return -1
+}
+
+func DecodeGbkStr(str string) (string, error) { 
+	s := []byte(str);
+    I := bytes.NewReader(s);
+    O := transform.NewReader(I, simplifiedchinese.GBK.NewDecoder());
+    d, e := ioutil.ReadAll(O);
+    if e != nil {
+        return "", e;
+    }
+    return string(d), nil;
 }
 
 func FormatPath(path string) string {

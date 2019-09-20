@@ -13,6 +13,8 @@ import (
 	"time"
 	"strconv"
 	"regexp"
+	"os/exec"
+	"bytes"
 	// "strings"
 	
 	"github.com/gorilla/mux"
@@ -42,12 +44,14 @@ func (c *MainRouter) Init(comMd *ComModel){
 	c.Router.HandleFunc("/server/{project}/query", c.queryPostHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/exec", c.execPostHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/insert", c.insertPostHandler).Methods("POST");
-	c.Router.HandleFunc("/server/{project}/file/save", c.saveFileHandler).Methods("POST");
+	c.Router.HandleFunc("/server/{project}/file/upload", c.uploadFileHandler).Methods("POST");
+	c.Router.HandleFunc("/server/{project}/file/download", c.downloadFileHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/file/delete", c.deleteFileHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/directory/delete", c.deleteDirectoryHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/directory/clear", c.clearDirectoryHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/directory/list", c.directoryListHandler).Methods("POST");
 	c.Router.HandleFunc("/server/{project}/directory/listAll", c.directoryListAllHandler).Methods("POST");
+	c.Router.HandleFunc("/server/{project}/cmd", c.cmdHandler).Methods("POST");
 	
 	//static
 	c.Router.HandleFunc("/{path:.*}", c.getStaticFileHandler);
@@ -223,20 +227,13 @@ func (c *MainRouter) insertPostHandler(w http.ResponseWriter, r *http.Request){
 	writeGzipByte(w, r, jsonData);
 }
 
-//save file
-func (c *MainRouter) saveFileHandler(w http.ResponseWriter, r *http.Request){
+//upload file
+func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
 	params := mux.Vars(r);
 	proj := params["project"];
-
-	// param := UploadFileMd{};
-	// decoder := json.NewDecoder(r.Body);
-	// err := decoder.Decode(&param);
-	// if err != nil {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
 	
 	name := r.FormValue("path");
+	rewrite := r.FormValue("rewrite");
 
 	// strRename := r.FormValue("rename");
 	rename,err := strconv.Atoi(r.FormValue("rename"));
@@ -264,30 +261,20 @@ func (c *MainRouter) saveFileHandler(w http.ResponseWriter, r *http.Request){
 		fileName = util.FormatTime(time.Now(), "yyyyMMddHHmmssfff") + ext;
 	}
 
-	fileName = c.formatPath(fileName);
-	if(fileName == "") {
-		c.comErr(w, r, "参数错误");
-		return;
+	path := "";
+	if(rewrite==""||rewrite=="1"||rewrite=="true") {
+		// if(fileName[1] != ':') {
+		// 	fileName = c.ComMd.ExePath + fileName;
+		// }
+		
+		fileName = c.formatPath(fileName);
+		if(fileName == "") {
+			c.comErr(w, r, "参数错误");
+			return;
+		}
+
+		path = c.GetProjPath(proj) + fileName;
 	}
-
-	// reg1, _ := regexp.Compile("[ ]*[\\/\\\\]+[ ]*");
-	// fileName = reg1.ReplaceAllString(fileName, "/");
-
-	// reg2, _ := regexp.Compile("[^\\/]*[^\\.\\/][\\/]\\.\\.[\\/]");
-	// for ;; {
-	// 	if(!reg2.MatchString(fileName)) {
-	// 		break;
-	// 	}
-	// 	fileName = reg2.ReplaceAllString(fileName, "");
-	// }
-
-	// reg3, _ := regexp.Compile("([:*?<>|])|([^\\/]\\.\\/)");
-	// if(reg3.MatchString(fileName)) {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	path := c.GetDataPath(proj) + fileName;
 
 	dir := "";
 	dir, fileName = filepath.Split(path);
@@ -319,48 +306,125 @@ func (c *MainRouter) saveFileHandler(w http.ResponseWriter, r *http.Request){
 	rst.Success = true;
 	jsonData, _ := json.Marshal(rst);
 	writeGzipByte(w, r, jsonData);
+}
 
-	// fmt.Println(path);
-	// io.Copy(w, file);
+//download file
+func (c *MainRouter) downloadFileHandler(w http.ResponseWriter, r *http.Request){
+	params := mux.Vars(r);
+	proj := params["project"];
+	
+	md := FileMd{};
+	decoder := json.NewDecoder(r.Body);
+	err := decoder.Decode(&md);
+	if err != nil || md.Path == "" {
+		io.WriteString(w, "");
+		return;
+	}
 
-	// f, err := os.OpenFile(c.ComMd.DataPath + fileNewName, os.O_WRONLY | os.O_CREATE, 0666);
-    // if err != nil {
-    //     fmt.Println(err);
-    //     return;
-    // }
-    // defer f.Close();
+	fileName := md.Path;
+	path := "";
+	if(md.Rewrite=="" || md.Rewrite=="1" || md.Rewrite=="true") {
+		fileName = c.formatPath(fileName);
+		if(fileName == "") {
+			io.WriteString(w, "");
+			return;
+		}
+		path = c.GetProjPath(proj) + fileName;
+	} else {
+		if(fileName == "") {
+			io.WriteString(w, "");
+			return;
+		}
+	}
+	
+	if(!util.FileExists(path)) {
+		io.WriteString(w, "");
+		return;
+	}
 
-	// id, err := GetDbServer().Insert(param.Sql, param.Params);
-	// rst := NewComRst();
-	// rst.Success = true;
-	// // rst.Data = nil;
-	// jsonData, _ := json.Marshal(rst);
-	// writeGzipByte(w, r, jsonData);
+	_, fname := filepath.Split(path);
+
+	w.Header().Add("Content-Type", "application/octet-stream");
+	w.Header().Add("Content-Disposition", "attachment; filename=" + fname);
+
+	// 读xlsx文件并发送
+	f, _ := os.OpenFile(path, os.O_RDONLY, 0666);
+	io.Copy(w, f);
+	f.Close();
+}
+
+//run cmd
+func (c *MainRouter) cmdHandler(w http.ResponseWriter, r *http.Request){
+	params := mux.Vars(r);
+	proj := params["project"];
+	
+	md := CmdMd{};
+	decoder := json.NewDecoder(r.Body);
+	err := decoder.Decode(&md);
+	if err != nil || md.Path == "" {
+		io.WriteString(w, "");
+		return;
+	}
+
+	fileName := md.Path;
+	path := "";
+	if(md.Rewrite=="" || md.Rewrite=="1" || md.Rewrite=="true") {
+		fileName = c.formatPath(fileName);
+		if(fileName == "") {
+			io.WriteString(w, "");
+			return;
+		}
+		path = c.GetProjPath(proj) + fileName;
+	} else {
+		if(fileName == "") {
+			io.WriteString(w, "");
+			return;
+		}
+	}
+	
+	if(!util.FileExists(path)) {
+		io.WriteString(w, "");
+		return;
+	}
+
+	// workDir, _ := os.Getwd();
+	if(len(path) < 2 || path[1] != ':') {
+		path = c.ComMd.WorkDir + "/" + path;
+	}
+	
+	dir, _ := filepath.Split(path);
+
+	// run cmd
+	bout := bytes.NewBuffer(nil);
+	berr := bytes.NewBuffer(nil);
+	cmd := exec.Command(path, md.Args...);
+	// cmd := exec.Command(path, md.Argument);
+	cmd.Dir = dir;
+	cmd.Stdout = bout;
+	err = cmd.Run();
+	str1 := bout.String();
+	str1,_ = util.DecodeGbkStr(str1);
+	// if str1 != "" && c.ComMd.Debug { fmt.Println(str1); }
+	str2 := berr.String();
+	str2,_ = util.DecodeGbkStr(str2);
+	// if str2 != "" && c.ComMd.Debug { fmt.Println(str2); }
+	str := str1;
+	if(str1 != "") { str += "\r\n"; }
+	str += str2;
+
+	// back
+	rst := NewComRst();
+	rst.Success = (err == nil);
+	rst.Data = str;
+	if(err != nil) {
+		rst.ErrInfo = err.Error();
+	}
+	jsonData, _ := json.Marshal(rst);
+	writeGzipByte(w, r, jsonData);
 }
 
 //delete file
 func (c *MainRouter) deleteFileHandler(w http.ResponseWriter, r *http.Request){
-	// params := mux.Vars(r);
-	// proj := params["project"];
-	
-	// md := FileMd{};
-	// decoder := json.NewDecoder(r.Body);
-	// err := decoder.Decode(&md);
-	// if err != nil || md.Path == "" {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	// fileName := md.Path;
-
-	// fileName = c.formatPath(fileName);
-	// if(fileName == "") {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	// path := c.GetDataPath(proj) + fileName;
-
 	var err error = nil;
 	path := c.logicGetFilePath(w, r);
 	if(path == "") {
@@ -382,30 +446,9 @@ func (c *MainRouter) deleteFileHandler(w http.ResponseWriter, r *http.Request){
 
 //delete directory
 func (c *MainRouter) deleteDirectoryHandler(w http.ResponseWriter, r *http.Request){
-	// params := mux.Vars(r);
-	// proj := params["project"];
-	
-	// md := FileMd{};
-	// decoder := json.NewDecoder(r.Body);
-	// err := decoder.Decode(&md);
-	// if err != nil || md.Path == "" {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	// fileName := md.Path;
-
-	// fileName = c.formatPath(fileName);
-	// if(fileName == "") {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	// path := c.GetDataPath(proj) + fileName;
-
-	var err error = nil;
-	path := c.logicGetDirPath(w, r);
-	if(path == "") {
+	// var err error = nil;
+	path,err := c.logicGetDirPath(w, r);
+	if(err != nil || path == "") {
 		return;
 	}
 
@@ -424,29 +467,9 @@ func (c *MainRouter) deleteDirectoryHandler(w http.ResponseWriter, r *http.Reque
 
 //clear directory
 func (c *MainRouter) clearDirectoryHandler(w http.ResponseWriter, r *http.Request) {
-	// params := mux.Vars(r);
-	// proj := params["project"];
-	
-	// md := FileMd{};
-	// decoder := json.NewDecoder(r.Body);
-	// err := decoder.Decode(&md);
-	// if err != nil || md.Path == "" {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-
-	// fileName := md.Path;
-
-	// fileName = c.formatPath(fileName);
-	// if(fileName == "") {
-	// 	c.comErr(w, r, "参数错误");
-	// 	return;
-	// }
-	// path := c.GetDataPath(proj) + fileName;
-
-	var err error = nil;
-	path := c.logicGetDirPath(w, r);
-	if(path == "") {
+	// var err error = nil;
+	path,err := c.logicGetDirPath(w, r);
+	if(err != nil || path == "") {
 		return;
 	}
 
@@ -474,9 +497,15 @@ func (c *MainRouter) clearDirectoryHandler(w http.ResponseWriter, r *http.Reques
 
 //directory list
 func (c *MainRouter) directoryListHandler(w http.ResponseWriter, r *http.Request) {
-	path := c.logicGetDirPath(w, r);
-	if(path == "") {
+	path,err := c.logicGetDirPath(w, r);
+	if(err != nil) {
 		return;
+	}
+	// if(path == "") {
+	// 	return;
+	// }
+	if(path == "") {
+		path = "./";
 	}
 
 	arr := []FileInfo{};
@@ -500,10 +529,15 @@ func (c *MainRouter) directoryListHandler(w http.ResponseWriter, r *http.Request
 
 //directory list all
 func (c *MainRouter) directoryListAllHandler(w http.ResponseWriter, r *http.Request) {
-	path := c.logicGetDirPath(w, r);
-	if(path == "") {
+	path,err := c.logicGetDirPath(w, r);
+	if(err != nil) {
 		return;
 	}
+	if(path == "") {
+		path = "./";
+	}
+
+	// fmt.Println(path);
 
 	arr := []FileInfo{};
 	if(util.DirectoryExists(path)) {
@@ -549,16 +583,30 @@ func (c *MainRouter) logicGetFilePath(w http.ResponseWriter, r *http.Request) st
 	}
 
 	fileName := md.Path;
+	if(md.Rewrite=="" || md.Rewrite=="1" || md.Rewrite=="true") {
+		
+	} else {
+		if(fileName == "") {
+			c.comErr(w, r, "参数错误");
+			return "";
+		}
+
+		// if(fileName[1] != ':') {
+		// 	fileName = c.ComMd.ExePath + fileName;
+		// }
+
+		return fileName;
+	}
 
 	fileName = c.formatPath(fileName);
 	if(fileName == "") {
 		c.comErr(w, r, "参数错误");
 		return "";
 	}
-	return c.GetDataPath(proj) + fileName;
+	return c.GetProjPath(proj) + fileName;
 }
 
-func (c *MainRouter) logicGetDirPath(w http.ResponseWriter, r *http.Request) string {
+func (c *MainRouter) logicGetDirPath(w http.ResponseWriter, r *http.Request) (string,error) {
 	params := mux.Vars(r);
 	proj := params["project"];
 	
@@ -567,13 +615,21 @@ func (c *MainRouter) logicGetDirPath(w http.ResponseWriter, r *http.Request) str
 	err := decoder.Decode(&md);
 	if err != nil {
 		c.comErr(w, r, "参数错误");
-		return "";
+		return "",err;
 	}
 
 	fileName := md.Path;
+	if(md.Rewrite=="" || md.Rewrite=="1" || md.Rewrite=="true") {
+
+	} else {
+		// if(fileName[1] != ':') {
+		// 	fileName = c.ComMd.ExePath + fileName;
+		// }
+		return fileName,nil;
+	}
 
 	fileName = c.formatPath(fileName);
-	return c.GetDataPath(proj) + fileName;
+	return c.GetProjPath(proj) + fileName,nil;
 }
 
 func (c *MainRouter) formatPath(fileName string) string {
@@ -581,27 +637,17 @@ func (c *MainRouter) formatPath(fileName string) string {
 	fileName = reg1.ReplaceAllString(fileName, "/");
 
 	reg2, _ := regexp.Compile("[^\\/]*[^\\.\\/][\\/]\\.\\.[\\/]");
-	// fileName = reg.ReplaceAllString(fileName, "");
-	// fileName = strings.Replace(fileName, "..", "", -1);
 	for ;; {
 		if(!reg2.MatchString(fileName)) {
 			break;
 		}
-		// fmt.Println("11:" + fileName);
 		fileName = reg2.ReplaceAllString(fileName, "");
-		// fmt.Println("12:" + fileName);
 	}
 
-	// fmt.Println("abc:" + fileName);
 	reg3, _ := regexp.Compile("([:*?<>|])|([^\\/]\\.\\/)");
 	if(reg3.MatchString(fileName)) {
-		// c.comErr(w, r, "参数错误");
 		return "";
 	}
-	// fileName = strings.Replace(fileName, "..", "", -1);
-
-	// fmt.Println(fileName);
-	// io.Copy(w, file);
 
 	return fileName;
 }
@@ -630,6 +676,7 @@ func (c *MainRouter) GetDbServer(proj string) (*DbServer) {
 	return GetDbServer(proj, c.ComMd.ConfigPath + proj + "/data.db");
 }
 
-func (c *MainRouter) GetDataPath(proj string) (string) {
-	return c.ComMd.ConfigPath + proj + "/data/";
+func (c *MainRouter) GetProjPath(proj string) (string) {
+	// return c.ComMd.ConfigPath + proj + "/data/";
+	return c.ComMd.ConfigPath + proj + "/";
 }

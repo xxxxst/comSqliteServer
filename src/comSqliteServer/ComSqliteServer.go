@@ -19,6 +19,7 @@ import (
 	. "router"
 	. "control"
 	. "model"
+	tag "tag"
 	// util "util"
 )
 
@@ -60,6 +61,13 @@ func (c *ComSqliteServer) Run() {
 	//set path
 	exeDir, _ := filepath.Abs(filepath.Dir(os.Args[0]));
 	c.comMd.ExePath = exeDir + "/";
+	// fmt.Println(tag.GetTag().Debug);
+	if(tag.GetTag().Debug) {
+		workDir, _ := os.Getwd();
+		c.comMd.WorkDir = workDir;
+	} else {
+		c.comMd.WorkDir = exeDir + "/";
+	}
 	c.comMd.ConfigPath = getStringNotEmpty(configPath, exeDir + "/serverConfig") + "/";
 
 	c.comMd.DbPath = c.comMd.ConfigPath + "data.db";

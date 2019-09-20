@@ -32,10 +32,18 @@ type UploadFileMd struct {
 
 type FileMd struct {
 	Path		string			`json:"path"`;
+	Rewrite		string			`json:"rewrite"`;
 }
 
 type FileInfo struct {
 	Name		string			`json:"name"`;
 	IsDir		bool			`json:"isDir"`;
 	Children	[]FileInfo		`json:"children"`;
+}
+
+type CmdMd struct {
+	Path		string			`json:"path"`;
+	Rewrite		string			`json:"rewrite"`;
+	Args		[]string		`json:"args"`;
+	// Argument	string			`json:"argument"`;
 }

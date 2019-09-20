@@ -4,6 +4,7 @@ type ComModel struct {
 	Version			string;
 	
 	ExePath			string;
+	WorkDir			string;
 	ConfigPath		string;
 
 	DbPath			string;
