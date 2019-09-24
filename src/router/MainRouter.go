@@ -17,6 +17,8 @@ import (
 	"bytes"
 	"mime"
 	"strings"
+	"sort"
+	// "syscall"
 	// "encoding/base64"
 	// "strings"
 	
@@ -562,6 +564,15 @@ func (c *MainRouter) clearDirectoryHandler(w http.ResponseWriter, r *http.Reques
 	writeGzipByte(w, r, jsonData);
 }
 
+// func timespecToTime(ts interface{}) time.Time {
+//     return time.Unix(int64(ts.Sec), int64(ts.Nsec))
+// }
+
+type ByFileInfo []FileInfo
+func (a ByFileInfo) Len() int      { return len(a) }
+func (a ByFileInfo) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ByFileInfo) Less(i, j int) bool { return strings.ToLower(a[i].Name) < strings.ToLower(a[j].Name) }
+
 //directory list
 func (c *MainRouter) directoryListHandler(w http.ResponseWriter, r *http.Request) {
 	path,err := c.logicGetDirPath(w, r);
@@ -582,11 +593,16 @@ func (c *MainRouter) directoryListHandler(w http.ResponseWriter, r *http.Request
 				md := FileInfo{};
 				md.Name = fi.Name();
 				md.IsDir = fi.IsDir();
+				md.Size = fi.Size();
+				md.ModifyTime = fi.ModTime().Unix();
+				// md.CreateTime = timespecToTime(stat_t.Ctim);
 				md.Children = []FileInfo{};
 				arr = append(arr, md);
 			}
 		}
 	}
+
+	sort.Sort(ByFileInfo(arr));
 
 	jsonData, _ := json.Marshal(arr);
 	writeGzipByte(w, r, jsonData);
@@ -620,6 +636,8 @@ func (c *MainRouter) ergDirListHandler(path string) []FileInfo {
 			md := FileInfo{};
 			md.Name = fi.Name();
 			md.IsDir = fi.IsDir();
+			md.Size = fi.Size();
+			md.ModifyTime = fi.ModTime().Unix();
 			md.Children = []FileInfo{};
 
 			if(md.IsDir) {
@@ -629,6 +647,8 @@ func (c *MainRouter) ergDirListHandler(path string) []FileInfo {
 			arr = append(arr, md);
 		}
 	}
+	
+	sort.Sort(ByFileInfo(arr));
 
 	return arr;
 }

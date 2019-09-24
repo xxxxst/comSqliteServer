@@ -38,6 +38,9 @@ type FileMd struct {
 type FileInfo struct {
 	Name		string			`json:"name"`;
 	IsDir		bool			`json:"isDir"`;
+	Size		int64			`json:"size"`;
+	ModifyTime	int64			`json:"modifyTime"`;
+	// CreateTime	int64			`json:"createTime"`;
 	Children	[]FileInfo		`json:"children"`;
 }
 
