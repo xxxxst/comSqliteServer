@@ -60,20 +60,24 @@ func (c *ComSqliteServer) Run() {
 
 	//set path
 	exeDir, _ := filepath.Abs(filepath.Dir(os.Args[0]));
-	c.comMd.ExePath = exeDir + "/";
+	// c.comMd.ExePath = exeDir + "/";
+	rootDir := exeDir + "/";
 	// fmt.Println(tag.GetTag().Debug);
 	if(tag.GetTag().Debug) {
 		workDir, _ := os.Getwd();
-		c.comMd.WorkDir = workDir;
+		rootDir = workDir;
+		c.comMd.WebPath = workDir + "\\bin\\release\\web\\";
 	} else {
-		c.comMd.WorkDir = exeDir + "/";
+		c.comMd.WebPath = rootDir + "web/";
 	}
-	c.comMd.ConfigPath = getStringNotEmpty(configPath, exeDir + "/serverConfig") + "/";
+	c.comMd.RootDir = rootDir;
+	// c.comMd.WorkDir = rootDir;
+	c.comMd.ConfigPath = getStringNotEmpty(configPath, rootDir + "/serverConfig") + "/";
 
-	c.comMd.DbPath = c.comMd.ConfigPath + "data.db";
-	c.comMd.DataPath = c.comMd.ConfigPath + "data/";
+	// c.comMd.DbPath = c.comMd.ConfigPath + "data.db";
+	// c.comMd.DataPath = c.comMd.ConfigPath + "data/";
 	c.comMd.WebConfigPath = c.comMd.ConfigPath + "config.xml";
-	c.comMd.WebPath = c.comMd.ExePath + "web/";
+	// c.comMd.WebPath = c.comMd.ExePath + "web/";
 
 	//load config
 	c.cfgCtl = ConfigCtl{};

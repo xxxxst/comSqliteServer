@@ -37,8 +37,8 @@ var GetDbServer = (func() (func(proj string, path string) (*DbServer)) {
 	};
 })();
 
-//数据库
-//连接数据库
+//database
+//connect database
 func (c *DbServer) Init(path string){
 	// InitDbDao(path);
 
@@ -47,41 +47,24 @@ func (c *DbServer) Init(path string){
 	c.checkErr(err)
 }
 
-//执行sql
+//exec sql
 func (c *DbServer) DirectExec(strSql string) bool {
-	// _, err := c.db.Exec(strSql);
-	
-	// return err == nil;
-
 	return c.Exec(strSql, make([]interface{}, 0));
 }
 
-//执行sql
+//exec sql
 func (c *DbServer) Exec(strSql string, arrParam []interface{}) bool {
 	_, err := c.db.Exec(strSql, arrParam...);
 	
 	return err == nil;
 }
 
-//插入sql
+//insert sql
 func (c *DbServer) DirectInsert(strSql string) (int64, error) {
 	return c.Insert(strSql, make([]interface{}, 0));
-	// rst, err := c.db.Exec(strSql);
-	// if(err != nil) {
-	// 	return -1, err;
-	// }
-
-	// var id int64;
-	// id, err = rst.LastInsertId();
-
-	// if(err != nil) {
-	// 	return -1, err;
-	// }
-	
-	// return id, nil;
 }
 
-//插入sql
+//insert sql
 func (c *DbServer) Insert(strSql string, arrParam []interface{}) (int64, error) {
 	rst, err := c.db.Exec(strSql, arrParam...);
 	if(err != nil) {
@@ -98,12 +81,12 @@ func (c *DbServer) Insert(strSql string, arrParam []interface{}) (int64, error) 
 	return id, nil;
 }
 
-//查询sql
+//query sql
 func (c *DbServer) DirectQuery(strSql string) []map[string]interface{}{
 	return c.Query(strSql, make([]interface{}, 0));
 }
 
-//查询sql
+//query sql
 func (c *DbServer) Query(strSql string, arrParam []interface{}) []map[string]interface{}{
     rows, err := c.db.Queryx(strSql, arrParam...);
 	c.checkErr(err);

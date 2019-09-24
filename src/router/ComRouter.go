@@ -36,11 +36,11 @@ func urlRedirect(converter func(string)(string), h http.Handler) http.Handler {
 	})
 }
 
-// 静态文件
+// static file
 func getStaticFileHandler(w http.ResponseWriter, r *http.Request, webPath string){
 	strPath := r.URL.Path;
 	if strPath != "" && strPath[len(strPath)-1]=='/' {
-		strPath = "/index.html";
+		strPath = strPath + "index.html";
 	}
 
 	strPath = webPath + strPath;
