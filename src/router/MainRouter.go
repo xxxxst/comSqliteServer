@@ -86,10 +86,17 @@ func (c *MainRouter) getStaticFileHandler(w http.ResponseWriter, r *http.Request
 		// find path {config}/{project}/web/
 		strPath = strPath[1:];
 		idx := strings.Index(strPath, "/");
-		proj := "";
-		if(idx >= 0) {
-			proj = strPath[:idx];
+		// proj := "";
+		// fmt.Println(idx, ",", strPath);
+		if(idx < 0) {
+			w.WriteHeader(404);
+			writeGzipStr(w, r, "404 page not found");
+			return;
 		}
+		// if(idx >= 0) {
+		// 	proj = strPath[:idx];
+		// }
+		proj := strPath[:idx];
 		fullPath = c.ComMd.ConfigPath + proj + "/web" + strPath[idx:];
 		
 		f, err = os.Stat(fullPath);
