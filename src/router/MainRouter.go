@@ -51,6 +51,7 @@ func (c *MainRouter) Init(comMd *ComModel){
 	c.Router.HandleFunc("/{project}/server/file/upload", c.uploadFileHandler).Methods("POST");
 	c.Router.HandleFunc("/{project}/server/file/download", c.downloadFileHandler).Methods("POST");
 	c.Router.HandleFunc("/{project}/server/file/get/{rewrite}/{path:.*}", c.getFileHandler).Methods("GET");
+	c.Router.HandleFunc("/{project}/server/file/saveString", c.saveStringToFileHandler).Methods("POST");
 	c.Router.HandleFunc("/{project}/server/file/delete", c.deleteFileHandler).Methods("POST");
 	c.Router.HandleFunc("/{project}/server/directory/delete", c.deleteDirectoryHandler).Methods("POST");
 	c.Router.HandleFunc("/{project}/server/directory/clear", c.clearDirectoryHandler).Methods("POST");
@@ -324,7 +325,7 @@ func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
 	}
 
 	dir := "";
-	dir, fileName = filepath.Split(path);
+	dir, _ = filepath.Split(path);
 
 	if(!util.DirectoryExists(dir)) {
 		os.MkdirAll(dir, os.ModePerm);
@@ -332,7 +333,7 @@ func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
 
 	var f *os.File = nil;
 	if util.FileExists(path) {
-        f, _ = os.OpenFile(path, os.O_WRONLY, 0666)
+        f, _ = os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
     } else {
         f, _ = os.Create(path)
 	}
@@ -349,6 +350,7 @@ func (c *MainRouter) uploadFileHandler(w http.ResponseWriter, r *http.Request){
 
 	rst := NewComRst();
 	rst.Success = true;
+	rst.Data = fileName;
 	jsonData, _ := json.Marshal(rst);
 	writeGzipByte(w, r, jsonData);
 }
@@ -427,6 +429,70 @@ func (c *MainRouter) getFileHandler(w http.ResponseWriter, r *http.Request) {
 	f, _ := os.OpenFile(path, os.O_RDONLY, 0666);
 	io.Copy(w, f);
 	f.Close();
+}
+
+//save string to file
+func (c *MainRouter) saveStringToFileHandler(w http.ResponseWriter, r *http.Request){
+	params := mux.Vars(r);
+	proj := params["project"];
+
+	md := SaveStringFileMd{};
+	decoder := json.NewDecoder(r.Body);
+	err := decoder.Decode(&md);
+	if err != nil {
+		c.comErr(w, r, "param error");
+		return;
+	}
+
+	fileName := md.Path;
+	if(md.Rename == 1) {
+		//get suffix
+		ext := path.Ext(md.Path);
+		// fileName = util.FormatTime(time.Now(), "yyyy/MM/dd HH:mm:ss fff") + ext;
+		fileName = util.FormatTime(time.Now(), "yyyyMMddHHmmssfff") + ext;
+	}
+
+	path := "";
+	if(md.Rewrite=="" || md.Rewrite=="1" || md.Rewrite=="true") {
+		fileName = c.formatPath(fileName);
+		if(fileName == "") {
+			c.comErr(w, r, "param error");
+			return;
+		}
+
+		path = c.GetProjPath(proj) + fileName;
+	}
+
+	dir := "";
+	dir, _ = filepath.Split(path);
+
+	if(!util.DirectoryExists(dir)) {
+		os.MkdirAll(dir, os.ModePerm);
+	}
+
+	var f *os.File = nil;
+	if util.FileExists(path) {
+        f, _ = os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0666)
+    } else {
+        f, _ = os.Create(path)
+	}
+	
+	if(f == nil){
+		c.comErr(w, r, "failed");
+		return;
+	}
+
+	writer := bufio.NewWriter(f);
+	writer.WriteString(md.Data);
+	// io.Copy(writer, file);
+	writer.Flush();
+	f.Close();
+
+	rst := NewComRst();
+	rst.Success = true;
+	rst.Data = fileName;
+	jsonData, _ := json.Marshal(rst);
+	writeGzipByte(w, r, jsonData);
 }
 
 //run cmd

@@ -35,6 +35,13 @@ type FileMd struct {
 	Rewrite		string			`json:"rewrite"`;
 }
 
+type SaveStringFileMd struct {
+	Path		string			`json:"path"`;
+	Rewrite		string			`json:"rewrite"`;
+	Rename		int				`json:"rename"`;
+	Data		string			`json:"data"`;
+}
+
 type FileInfo struct {
 	Name		string			`json:"name"`;
 	IsDir		bool			`json:"isDir"`;
